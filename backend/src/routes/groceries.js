@@ -9,24 +9,7 @@ router.use(authenticate);
 // Get all grocery items
 router.get('/', async (req, res, next) => {
   try {
-    const { showChecked = 'true' } = req.query;
-
-    const where = {
-      userId: req.user.id,
-    };
-
-    if (showChecked === 'false') {
-      where.isChecked = false;
-    }
-
-    const items = await req.prisma.groceryItem.findMany({
-      where,
-      orderBy: [
-        { isChecked: 'asc' },
-        { category: 'asc' },
-        { name: 'asc' },
-      ],
-    });
+    const items = await req.db.getGroceriesByUser(req.user.id);
 
     // Group by category
     const grouped = items.reduce((acc, item) => {
@@ -64,14 +47,12 @@ router.post('/', [
 
     const { name, quantity, unit, category } = req.body;
 
-    const item = await req.prisma.groceryItem.create({
-      data: {
-        name,
-        quantity,
-        unit,
-        category,
-        userId: req.user.id,
-      },
+    const item = await req.db.createGroceryItem({
+      name,
+      quantity,
+      unit,
+      category,
+      userId: req.user.id,
     });
 
     res.status(201).json({ item });
@@ -80,76 +61,14 @@ router.post('/', [
   }
 });
 
-// Add multiple grocery items
-router.post('/bulk', async (req, res, next) => {
-  try {
-    const { items } = req.body;
-
-    if (!items || !Array.isArray(items)) {
-      return res.status(400).json({ error: 'Items array required' });
-    }
-
-    const created = await req.prisma.groceryItem.createMany({
-      data: items.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        category: item.category,
-        userId: req.user.id,
-      })),
-    });
-
-    res.status(201).json({ success: true, count: created.count });
-  } catch (error) {
-    next(error);
-  }
-});
-
 // Toggle item checked status
 router.patch('/:id/toggle', async (req, res, next) => {
   try {
-    const existing = await req.prisma.groceryItem.findFirst({
-      where: { id: req.params.id, userId: req.user.id },
-    });
+    const item = await req.db.toggleGroceryItem(req.params.id, req.user.id);
 
-    if (!existing) {
+    if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
-
-    const item = await req.prisma.groceryItem.update({
-      where: { id: req.params.id },
-      data: { isChecked: !existing.isChecked },
-    });
-
-    res.json({ item });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Update grocery item
-router.put('/:id', async (req, res, next) => {
-  try {
-    const existing = await req.prisma.groceryItem.findFirst({
-      where: { id: req.params.id, userId: req.user.id },
-    });
-
-    if (!existing) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
-
-    const { name, quantity, unit, category, isChecked } = req.body;
-
-    const item = await req.prisma.groceryItem.update({
-      where: { id: req.params.id },
-      data: {
-        ...(name && { name }),
-        ...(quantity !== undefined && { quantity }),
-        ...(unit !== undefined && { unit }),
-        ...(category !== undefined && { category }),
-        ...(isChecked !== undefined && { isChecked }),
-      },
-    });
 
     res.json({ item });
   } catch (error) {
@@ -160,18 +79,7 @@ router.put('/:id', async (req, res, next) => {
 // Delete grocery item
 router.delete('/:id', async (req, res, next) => {
   try {
-    const existing = await req.prisma.groceryItem.findFirst({
-      where: { id: req.params.id, userId: req.user.id },
-    });
-
-    if (!existing) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
-
-    await req.prisma.groceryItem.delete({
-      where: { id: req.params.id },
-    });
-
+    await req.db.deleteGroceryItem(req.params.id, req.user.id);
     res.json({ success: true });
   } catch (error) {
     next(error);
@@ -181,27 +89,8 @@ router.delete('/:id', async (req, res, next) => {
 // Clear all checked items
 router.delete('/clear/checked', async (req, res, next) => {
   try {
-    const result = await req.prisma.groceryItem.deleteMany({
-      where: {
-        userId: req.user.id,
-        isChecked: true,
-      },
-    });
-
-    res.json({ success: true, deleted: result.count });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Clear all items
-router.delete('/clear/all', async (req, res, next) => {
-  try {
-    const result = await req.prisma.groceryItem.deleteMany({
-      where: { userId: req.user.id },
-    });
-
-    res.json({ success: true, deleted: result.count });
+    const count = await req.db.clearCheckedGroceries(req.user.id);
+    res.json({ success: true, deleted: count });
   } catch (error) {
     next(error);
   }

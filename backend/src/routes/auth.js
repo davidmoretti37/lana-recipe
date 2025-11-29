@@ -30,9 +30,7 @@ router.post('/register', validateRegistration, async (req, res, next) => {
     const { email, password, name } = req.body;
 
     // Check if user exists
-    const existingUser = await req.prisma.user.findUnique({
-      where: { email },
-    });
+    const existingUser = await req.db.getUserByEmail(email);
 
     if (existingUser) {
       return res.status(400).json({ error: 'Email already registered' });
@@ -42,30 +40,18 @@ router.post('/register', validateRegistration, async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
-    const user = await req.prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatarUrl: true,
-        isPremium: true,
-        createdAt: true,
-      },
+    const user = await req.db.createUser({
+      email,
+      password: hashedPassword,
+      name,
     });
 
     // Create default cookbook
-    await req.prisma.cookbook.create({
-      data: {
-        name: 'My Recipes',
-        description: 'Your personal recipe collection',
-        isDefault: true,
-        userId: user.id,
-      },
+    await req.db.createCookbook({
+      name: 'My Recipes',
+      description: 'Your personal recipe collection',
+      isDefault: true,
+      userId: user.id,
     });
 
     // Generate token
@@ -93,9 +79,7 @@ router.post('/login', validateLogin, async (req, res, next) => {
     const { email, password } = req.body;
 
     // Find user
-    const user = await req.prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await req.db.getUserByEmail(email);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
