@@ -3,7 +3,7 @@ import { store } from '../store';
 import { logout } from '../store/slices/authSlice';
 
 // Configure base URL - update this for production
-const API_URL = __DEV__ ? 'http://localhost:3000/api' : 'https://api.lanarecipe.com/api';
+const API_URL = __DEV__ ? 'http://192.168.68.103:3000/api' : 'https://api.lanarecipe.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
