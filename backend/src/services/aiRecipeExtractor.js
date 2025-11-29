@@ -1,15 +1,22 @@
 const OpenAI = require('openai');
-const config = require('../config');
 
 // Use OpenRouter API (compatible with OpenAI SDK)
-const openrouter = new OpenAI({
-  apiKey: config.openrouter.apiKey,
-  baseURL: config.openrouter.baseUrl,
-  defaultHeaders: {
-    'HTTP-Referer': 'https://lanarecipe.com',
-    'X-Title': 'Lana Recipe',
-  },
-});
+// Initialize lazily to ensure env vars are loaded
+let openrouter = null;
+
+function getClient() {
+  if (!openrouter) {
+    openrouter = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: 'https://openrouter.ai/api/v1',
+      defaultHeaders: {
+        'HTTP-Referer': 'https://lanarecipe.com',
+        'X-Title': 'Lana Recipe',
+      },
+    });
+  }
+  return openrouter;
+}
 
 /**
  * Extract recipe from Instagram/social media content
@@ -35,8 +42,9 @@ Always provide a complete recipe even if information is partial - use your culin
   ];
 
   try {
-    const response = await openrouter.chat.completions.create({
-      model: config.openrouter.model,
+    const client = getClient();
+    const response = await client.chat.completions.create({
+      model: 'anthropic/claude-sonnet-4',
       messages,
       max_tokens: 4096,
       temperature: 0.7,
