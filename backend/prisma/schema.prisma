@@ -1,0 +1,159 @@
+// Prisma schema for Lana Recipe App
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  password      String
+  name          String
+  avatarUrl     String?
+  isPremium     Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  recipes       Recipe[]
+  cookbooks     Cookbook[]
+  mealPlans     MealPlan[]
+  groceryItems  GroceryItem[]
+}
+
+model Recipe {
+  id            String     @id @default(uuid())
+  title         String
+  description   String?
+  imageUrl      String?
+  sourceUrl     String?
+  sourcePlatform String?   // instagram, tiktok, youtube, etc.
+
+  // Parsed recipe data
+  ingredients   Ingredient[]
+  instructions  Instruction[]
+
+  // Metadata
+  prepTime      Int?       // in minutes
+  cookTime      Int?       // in minutes
+  servings      Int?
+  difficulty    String?    // easy, medium, hard
+  cuisine       String?
+  tags          String[]   @default([])
+
+  // AI extraction data
+  rawContent    String?    // Original caption/text
+  aiConfidence  Float?     // How confident AI was in extraction
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cookbookId    String?
+  cookbook      Cookbook?  @relation(fields: [cookbookId], references: [id], onDelete: SetNull)
+
+  mealPlanItems MealPlanItem[]
+
+  @@index([userId])
+  @@index([cookbookId])
+}
+
+model Ingredient {
+  id            String     @id @default(uuid())
+  name          String
+  quantity      String?
+  unit          String?
+  notes         String?
+  order         Int        @default(0)
+
+  recipeId      String
+  recipe        Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model Instruction {
+  id            String     @id @default(uuid())
+  stepNumber    Int
+  text          String
+  duration      Int?       // in minutes
+  imageUrl      String?
+
+  recipeId      String
+  recipe        Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([recipeId])
+}
+
+model Cookbook {
+  id            String     @id @default(uuid())
+  name          String
+  description   String?
+  coverImageUrl String?
+  color         String?    // Theme color
+  isDefault     Boolean    @default(false)
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  recipes       Recipe[]
+
+  @@index([userId])
+}
+
+model MealPlan {
+  id            String     @id @default(uuid())
+  weekStart     DateTime   // Start of the week
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items         MealPlanItem[]
+
+  @@unique([userId, weekStart])
+  @@index([userId])
+}
+
+model MealPlanItem {
+  id            String     @id @default(uuid())
+  date          DateTime
+  mealType      String     // breakfast, lunch, dinner, snack
+
+  mealPlanId    String
+  mealPlan      MealPlan   @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  recipeId      String
+  recipe        Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([mealPlanId])
+  @@index([recipeId])
+}
+
+model GroceryItem {
+  id            String     @id @default(uuid())
+  name          String
+  quantity      String?
+  unit          String?
+  category      String?    // produce, dairy, meat, etc.
+  isChecked     Boolean    @default(false)
+
+  createdAt     DateTime   @default(now())
+
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

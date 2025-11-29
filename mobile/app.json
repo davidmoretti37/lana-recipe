@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Lana Recipe",
+    "slug": "lana-recipe",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FF6B35"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lanarecipe.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to save recipe images.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["lanarecipe"]
+          }
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FF6B35"
+      },
+      "package": "com.lanarecipe.app",
+      "intentFilters": [
+        {
+          "action": "android.intent.action.SEND",
+          "category": ["android.intent.category.DEFAULT"],
+          "data": [
+            { "mimeType": "text/plain" },
+            { "mimeType": "image/*" }
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-image-picker"
+    ]
+  }
+}
