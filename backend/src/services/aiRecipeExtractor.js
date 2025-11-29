@@ -1,8 +1,14 @@
 const OpenAI = require('openai');
 const config = require('../config');
 
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
+// Use OpenRouter API (compatible with OpenAI SDK)
+const openrouter = new OpenAI({
+  apiKey: config.openrouter.apiKey,
+  baseURL: config.openrouter.baseUrl,
+  defaultHeaders: {
+    'HTTP-Referer': 'https://lanarecipe.com',
+    'X-Title': 'Lana Recipe',
+  },
 });
 
 /**
@@ -29,16 +35,23 @@ Always provide a complete recipe even if information is partial - use your culin
   ];
 
   try {
-    const response = await openai.chat.completions.create({
-      model: config.openai.model,
+    const response = await openrouter.chat.completions.create({
+      model: config.openrouter.model,
       messages,
-      response_format: { type: 'json_object' },
       max_tokens: 4096,
       temperature: 0.7,
     });
 
     const content = response.choices[0].message.content;
-    const recipe = JSON.parse(content);
+
+    // Extract JSON from response (handle potential markdown wrapping)
+    let jsonStr = content;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[0];
+    }
+
+    const recipe = JSON.parse(jsonStr);
 
     // Validate and normalize the recipe structure
     return normalizeRecipe(recipe, { sourceUrl, caption });
@@ -60,7 +73,7 @@ ${caption ? `Caption: "${caption}"` : 'No caption provided.'}
 
 ${videoUrl ? `Video URL: ${videoUrl}` : ''}
 
-Please provide the recipe in the following JSON format:
+Please provide the recipe in the following JSON format. IMPORTANT: Respond with ONLY valid JSON, no other text:
 {
   "title": "Recipe name",
   "description": "Brief description of the dish",
@@ -68,18 +81,18 @@ Please provide the recipe in the following JSON format:
     { "name": "ingredient name", "quantity": "amount", "unit": "unit", "notes": "optional notes" }
   ],
   "instructions": [
-    { "stepNumber": 1, "text": "Step description", "duration": optional_minutes }
+    { "stepNumber": 1, "text": "Step description", "duration": null }
   ],
-  "prepTime": minutes_or_null,
-  "cookTime": minutes_or_null,
-  "servings": number_or_null,
-  "difficulty": "easy|medium|hard",
+  "prepTime": 10,
+  "cookTime": 20,
+  "servings": 4,
+  "difficulty": "easy",
   "cuisine": "cuisine type",
   "tags": ["tag1", "tag2"],
-  "confidence": 0.0_to_1.0
+  "confidence": 0.8
 }
 
-Be thorough - extract every ingredient you can see and infer steps from the cooking process shown.`,
+Be thorough - extract every ingredient you can see and infer steps from the cooking process shown. Return ONLY the JSON object.`,
   });
 
   // Add images if provided
